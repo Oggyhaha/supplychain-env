@@ -1,0 +1,122 @@
+﻿id: task_hard
+name: "Supplier Disruption and Holiday Crisis"
+difficulty: hard
+max_steps: 90
+success_threshold: 0.5
+
+description: "Manage 5 SKUs over 90 days with major disruptions. Primary supplier TechCorp goes bankrupt on day 45. Holiday demand surge begins on day 75 with 2.5x normal demand."
+
+goal: "Maintain service level above 90% throughout 90 days despite supplier bankruptcy on day 45 and holiday demand surge on days 75-90."
+
+skus:
+  - sku_id: "LAPTOP-001"
+    name: "Business Laptop"
+    unit_cost: 800.0
+    selling_price: 1200.0
+    holding_cost: 2.0
+    stockout_penalty: 50.0
+    reorder_point: 20
+    max_capacity: 300
+    min_order_qty: 5
+    demand_pattern: "seasonal"
+    category: "electronics"
+
+  - sku_id: "TABLET-002"
+    name: "Tablet Pro"
+    unit_cost: 400.0
+    selling_price: 650.0
+    holding_cost: 1.5
+    stockout_penalty: 30.0
+    reorder_point: 15
+    max_capacity: 400
+    min_order_qty: 10
+    demand_pattern: "shock"
+    category: "electronics"
+
+  - sku_id: "CHAIR-005"
+    name: "Ergonomic Chair"
+    unit_cost: 200.0
+    selling_price: 350.0
+    holding_cost: 3.0
+    stockout_penalty: 20.0
+    reorder_point: 10
+    max_capacity: 100
+    min_order_qty: 5
+    demand_pattern: "trending"
+    category: "furniture"
+
+  - sku_id: "KEYBOARD-009"
+    name: "Mechanical Keyboard"
+    unit_cost: 80.0
+    selling_price: 140.0
+    holding_cost: 0.5
+    stockout_penalty: 10.0
+    reorder_point: 25
+    max_capacity: 500
+    min_order_qty: 20
+    demand_pattern: "random"
+    category: "electronics"
+
+  - sku_id: "MONITOR-004"
+    name: "4K Monitor"
+    unit_cost: 350.0
+    selling_price: 550.0
+    holding_cost: 2.5
+    stockout_penalty: 40.0
+    reorder_point: 10
+    max_capacity: 200
+    min_order_qty: 5
+    demand_pattern: "trending"
+    category: "electronics"
+
+initial_inventory:
+  LAPTOP-001: 40
+  TABLET-002: 30
+  CHAIR-005: 15
+  KEYBOARD-009: 60
+  MONITOR-004: 20
+
+budget: 300000.0
+
+events:
+  - day: 45
+    type: "bankruptcy"
+    supplier_id: "SUP-001"
+    supplier_name: "TechCorp Industries"
+    description: "TechCorp Industries declares bankruptcy. All pending orders cancelled. Find alternative suppliers immediately."
+    affected_skus:
+      - "LAPTOP-001"
+      - "TABLET-002"
+      - "MONITOR-004"
+
+  - day: 75
+    type: "demand_surge"
+    multiplier: 2.5
+    description: "Holiday season begins. All demand increases by 2.5x for remaining 15 days."
+    duration_days: 15
+
+grading:
+  bankruptcy_survival_weight: 0.20
+  service_level_weight: 0.30
+  holiday_surge_weight: 0.25
+  cost_efficiency_weight: 0.25
+  minimum_passing_score: 0.50
+
+baseline_scores:
+  random_agent: 0.15
+  llm_baseline: 0.45
+  perfect_agent: 0.90
+
+timeline:
+  days_1_to_44: "Normal operations - build buffer stock"
+  day_45: "CRISIS - TechCorp goes bankrupt"
+  days_45_to_74: "Recovery - use alternative suppliers"
+  day_75: "SURGE - Holiday demand 2.5x begins"
+  days_75_to_90: "Holiday rush - maintain service level"
+
+strategy_hints:
+  - "Build extra buffer stock before day 45"
+  - "SUP-002 and SUP-003 can replace SUP-001"
+  - "Start building holiday stock around day 65"
+  - "Monitor budget carefully during surge"
+  - "Prioritize high-penalty SKUs during crisis"

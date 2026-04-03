@@ -1,0 +1,51 @@
+id: task_easy
+name: "Single SKU Inventory Management"
+difficulty: easy
+max_steps: 30
+success_threshold: 0.7
+
+description: "Manage inventory for one product (Business Laptop) over 30 simulation days. Demand is stable and predictable. Stay within budget and avoid stockouts."
+
+goal: "Keep service level above 95% without exceeding the $50,000 budget over 30 days."
+
+skus:
+  - sku_id: "LAPTOP-001"
+    name: "Business Laptop 15 inch"
+    unit_cost: 800.0
+    selling_price: 1200.0
+    holding_cost: 2.0
+    stockout_penalty: 50.0
+    reorder_point: 20
+    max_capacity: 300
+    min_order_qty: 5
+    demand_pattern: "stable"
+    category: "electronics"
+
+initial_inventory:
+  LAPTOP-001: 50
+
+budget: 50000.0
+
+demand:
+  pattern: "stable"
+  base_units_per_day: 10
+  variance: "low"
+
+events: []
+
+grading:
+  service_level_weight: 0.40
+  stockout_score_weight: 0.30
+  budget_score_weight: 0.30
+  minimum_passing_score: 0.70
+
+baseline_scores:
+  random_agent: 0.20
+  llm_baseline: 0.75
+  perfect_agent: 0.98
+
+hints:
+  - "Demand is stable at around 10 units per day"
+  - "Lead time from TechCorp is 3 days"
+  - "Reorder when inventory drops below 30 units"
+  - "Budget is generous for this task"

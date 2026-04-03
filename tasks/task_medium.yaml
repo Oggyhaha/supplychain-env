@@ -1,0 +1,103 @@
+id: task_medium
+name: "Multi-SKU Budget Constrained Management"
+difficulty: medium
+max_steps: 60
+success_threshold: 0.6
+
+description: "Manage inventory for 4 different products over 60 simulation days. Each product has a different demand pattern. Budget is limited at $150,000 so the agent must prioritize wisely."
+
+goal: "Maintain service level above 90% across all 4 SKUs while staying within the $150,000 budget over 60 days."
+
+skus:
+  - sku_id: "LAPTOP-001"
+    name: "Business Laptop"
+    unit_cost: 800.0
+    selling_price: 1200.0
+    holding_cost: 2.0
+    stockout_penalty: 50.0
+    reorder_point: 20
+    max_capacity: 300
+    min_order_qty: 5
+    demand_pattern: "stable"
+    category: "electronics"
+
+  - sku_id: "TABLET-002"
+    name: "Tablet Pro"
+    unit_cost: 400.0
+    selling_price: 650.0
+    holding_cost: 1.5
+    stockout_penalty: 30.0
+    reorder_point: 15
+    max_capacity: 400
+    min_order_qty: 10
+    demand_pattern: "trending"
+    category: "electronics"
+
+  - sku_id: "CHAIR-005"
+    name: "Ergonomic Chair"
+    unit_cost: 200.0
+    selling_price: 350.0
+    holding_cost: 3.0
+    stockout_penalty: 20.0
+    reorder_point: 10
+    max_capacity: 100
+    min_order_qty: 5
+    demand_pattern: "seasonal"
+    category: "furniture"
+
+  - sku_id: "KEYBOARD-009"
+    name: "Mechanical Keyboard"
+    unit_cost: 80.0
+    selling_price: 140.0
+    holding_cost: 0.5
+    stockout_penalty: 10.0
+    reorder_point: 25
+    max_capacity: 500
+    min_order_qty: 20
+    demand_pattern: "random"
+    category: "electronics"
+
+initial_inventory:
+  LAPTOP-001: 40
+  TABLET-002: 30
+  CHAIR-005: 15
+  KEYBOARD-009: 60
+
+budget: 150000.0
+
+demand:
+  LAPTOP-001:
+    pattern: "stable"
+    base_units_per_day: 10
+  TABLET-002:
+    pattern: "trending"
+    starts_at: 8
+    ends_at: 20
+  CHAIR-005:
+    pattern: "seasonal"
+    peak_multiplier: 2.5
+  KEYBOARD-009:
+    pattern: "random"
+    min: 5
+    max: 35
+
+events: []
+
+grading:
+  service_level_weight: 0.35
+  budget_efficiency_weight: 0.25
+  inventory_balance_weight: 0.25
+  stockout_penalty_weight: 0.15
+  minimum_passing_score: 0.60
+
+baseline_scores:
+  random_agent: 0.25
+  llm_baseline: 0.62
+  perfect_agent: 0.95
+
+challenges:
+  - "Budget not enough to fully stock everything"
+  - "Tablet demand grows over time - plan ahead"
+  - "Chair demand spikes seasonally"
+  - "Keyboard demand is unpredictable"
+  - "Must prioritize high-penalty SKUs"

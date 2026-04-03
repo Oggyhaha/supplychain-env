@@ -1,0 +1,95 @@
+# ## FILE 7 — `openenv.yaml`
+
+# ### What Is It?
+# ```
+# The ID card of our environment.
+# OpenEnv system reads this file to understand
+# what our environment is and how to validate it.
+
+# Like a passport — without it, environment
+# doesn't officially exist in OpenEnv system.
+# This is required for openenv validate to pass.
+# Open openenv.yaml and paste:
+# yaml# openenv.yaml
+# # ═══════════════════════════════════════════════
+# # OPENENV ENVIRONMENT METADATA
+# # Required for OpenEnv spec compliance
+# # ═══════════════════════════════════════════════
+
+name: supplychain-env
+version: 1.0.0
+description: >
+  A supply chain inventory management environment
+  where an AI agent manages warehouse inventory
+  across multiple SKUs, suppliers, and demand patterns.
+  Simulates real-world procurement decisions including
+  reorder timing, supplier selection, budget allocation,
+  and disruption handling.
+
+author: your-name-here
+license: MIT
+
+# Environment endpoints
+api:
+  reset: /reset/{task_id}
+  step:  /step/{task_id}
+  state: /state/{task_id}
+
+# The 3 required tasks
+tasks:
+  - id: task_easy
+    name: Single SKU Management
+    difficulty: easy
+    description: >
+      Manage inventory for one product (Laptop) over 30 days.
+      Stable demand pattern. Limited budget of $50,000.
+    max_steps: 30
+    success_threshold: 0.7
+
+  - id: task_medium
+    name: Multi-SKU Budget Management
+    difficulty: medium
+    description: >
+      Manage 4 SKUs with different demand patterns over 60 days.
+      Budget constrained at $150,000. Must balance priorities.
+    max_steps: 60
+    success_threshold: 0.6
+
+  - id: task_hard
+    name: Supplier Disruption Crisis
+    difficulty: hard
+    description: >
+      Manage 5 SKUs over 90 days. Supplier goes bankrupt on day 45.
+      Holiday demand surge on days 75-90. Budget of $300,000.
+    max_steps: 90
+    success_threshold: 0.5
+
+# Observation space description
+observation_space:
+  type: dict
+  fields:
+    current_day: integer
+    inventory: dict
+    pending_orders: list
+    budget_remaining: float
+    demand_forecast: dict
+    suppliers: list
+    skus: list
+
+# Action space description
+action_space:
+  type: dict
+  fields:
+    orders:
+      type: list
+      items:
+        sku_id: string
+        supplier_id: string
+        quantity: integer
+    reasoning: string
+
+# Reward range
+reward:
+  min: 0.0
+  max: 1.0
+  type: float
