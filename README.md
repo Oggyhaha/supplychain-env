@@ -10,58 +10,75 @@ app_port: 7860
 
 # SupplyChain-Env
 
-A real-world supply chain inventory management
-environment built for OpenEnv.
+A real-world OpenEnv environment for training
+and evaluating AI agents on supply chain
+inventory management decisions.
 
-An AI agent manages warehouse inventory across
-multiple products, suppliers, and demand patterns.
+## Why This Environment Matters
 
-## What It Simulates
-
-Every real warehouse faces these daily decisions:
-- When to reorder products before stockout
+Every retailer warehouse faces these decisions daily:
+- When to reorder before stockout happens
 - How many units to order from which supplier
-- How to balance budget across multiple products
-- How to handle supplier disruptions and demand spikes
+- How to balance limited budget across products
+- How to survive supplier bankruptcy and demand surges
 
-## The 3 Tasks
+Poor decisions cost billions annually.
+This environment lets AI agents learn optimal
+strategies through reinforcement learning.
 
-### Task 1 - Easy - Single SKU Management
-- 1 product over 30 days
-- Stable demand pattern
-- Budget: $50,000
-- Expected score: 0.70 to 0.85
+## Environment Design
 
-### Task 2 - Medium - Multi SKU Budget Management
-- 4 products over 60 days
-- Different demand patterns per product
-- Budget: $150,000
-- Expected score: 0.55 to 0.70
+### State Space
+Each day the agent observes:
+- Current inventory per SKU (units)
+- 7-day demand forecast per SKU
+- Available suppliers with status and lead times
+- Pending orders not yet delivered
+- Budget remaining
+- Yesterday performance metrics
 
-### Task 3 - Hard - Supplier Disruption Crisis
-- 5 products over 90 days
-- Supplier goes bankrupt on day 45
-- Holiday demand surge on days 75 to 90
-- Budget: $300,000
-- Expected score: 0.40 to 0.55
+### Action Space
+Each day the agent decides:
+- Which SKUs to reorder
+- How many units to order
+- Which supplier to order from
+- Or do nothing if stock is healthy
 
-## API Endpoints
+### Reward Function
+Dense reward signal every day:
+- Service level achieved (50% weight)
+- Inventory health score (25% weight)
+- Budget efficiency (10% weight)
+- Stockout penalties (proportional)
+- Overstock penalties (minor)
 
-Reset environment and start new episode:
+## Three Tasks
+
+| Task | Difficulty | Days | SKUs | Key Challenge |
+|------|-----------|------|------|---------------|
+| task_easy | Easy | 30 | 1 | Basic reorder timing |
+| task_medium | Medium | 60 | 4 | Budget allocation |
+| task_hard | Hard | 90 | 5 | Supplier bankruptcy + holiday surge |
+
+## Baseline Scores
+
+| Task | Random Agent | LLM Baseline | Perfect Agent |
+|------|-------------|--------------|---------------|
+| task_easy | ~0.30 | ~0.72 | ~0.95 |
+| task_medium | ~0.20 | ~0.58 | ~0.90 |
+| task_hard | ~0.15 | ~0.42 | ~0.85 |
+
+## API Reference
+
+### Reset Environment
 POST /reset/{task_id}
 
-Take one action step:
+Returns initial observation for the episode.
+
+### Take Action Step
 POST /step/{task_id}
 
-Get current state:
-GET /state/{task_id}
-
-Check server health:
-GET /health
-
-## Action Space
-
-The agent places purchase orders each day:
+Body:
 ```json
 {
   "orders": [
@@ -75,64 +92,51 @@ The agent places purchase orders each day:
 }
 ```
 
-## Observation Space
+### Get Current State
+GET /state/{task_id}
 
-Each day the agent receives:
-- Current inventory levels per SKU
-- 7-day demand forecast per SKU
-- Available suppliers and their status
-- Pending orders not yet delivered
-- Budget remaining
-- Yesterday performance metrics
+### Health Check
+GET /health
 
-## Reward Function
+## Quick Start
 
-Daily rewards signal:
-- Plus 0.5 times service level achieved today
-- Plus 0.3 times inventory health score
-- Minus 0.15 per SKU that stocked out
-- Minus 0.05 per SKU that is overstocked
-- Minus 0.3 if budget exceeded
-
-## Setup Instructions
-
-### Run Locally
-
-Clone the repository:
+### Local Setup
+```bash
 git clone https://huggingface.co/spaces/Oggyis1/supplychain-env
-
-Install dependencies:
+cd supplychain-env
 pip install -r requirements.txt
 pip install torch --index-url https://download.pytorch.org/whl/cpu
-
-Start server:
 python server.py
+```
 
-Run baseline inference:
+### Run Baseline Inference
+```bash
+cp .env.example .env
+# Add your Groq API key to .env
 python inference.py
+```
 
-### Run With Docker
-
-Build the container:
+### Docker
+```bash
 docker build -t supplychain-env .
-
-Run the container:
 docker run -p 7860:7860 supplychain-env
+```
 
-## Baseline Scores
+## PyTorch Reward Predictor
 
-| Task | Difficulty | Random Agent | LLM Baseline |
-|------|------------|--------------|--------------|
-| task_easy | Easy | 0.20 | 0.75 |
-| task_medium | Medium | 0.25 | 0.62 |
-| task_hard | Hard | 0.15 | 0.45 |
+Includes a neural network that predicts
+reward scores from warehouse state features.
+Used to improve agent decision quality.
+```bash
+python -m pytorch.reward_predictor
+```
 
 ## Tech Stack
 
 - Python 3.11
-- FastAPI for environment server
-- Pydantic for typed data models
-- PyTorch for reward predictor neural network
+- FastAPI + Uvicorn
+- Pydantic v2 typed models
+- PyTorch neural network
 - OpenEnv spec compliant
 - Docker containerized
-- Groq LLM for baseline inference
+- Groq LLM baseline

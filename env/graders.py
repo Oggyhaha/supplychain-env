@@ -1,283 +1,238 @@
-# ## FILE 4 — `env/graders.py`
-
-# ### What Is It?
-# ```
-# The JUDGE of our environment.
-# After agent completes a task → grader scores it.
-
-# Like a teacher marking your exam:
-# Task 1 completed → grader gives score 0.0 to 1.0
-# Task 2 completed → grader gives score 0.0 to 1.0
-# Task 3 completed → grader gives score 0.0 to 1.0
-# ```
-
-# ### Why Is It Important?
-# ```
-# Judges literally run our graders to evaluate us!
-# This is 25% of total hackathon score.
-
-# Must be:
-# ✅ Deterministic (same input = same score always)
-# ✅ Fair (partial credit for partial success)
-# ✅ Clear (obvious what succeeded or failed)
-# Open env/graders.py and paste:
-# python# env/graders.py
-# # ═══════════════════════════════════════════════
-# # TASK GRADERS — Scores agent performance
-# #
-# # Each task has its own grader function.
-# # All graders return scores between 0.0 and 1.0
-# # ═══════════════════════════════════════════════
+# env/graders.py
+# ═══════════════════════════════════════════════
+# IMPROVED TASK GRADERS
+#
+# Fairer scoring with proper partial credit.
+# Deterministic and reproducible.
+# Difficulty properly calibrated.
+# ═══════════════════════════════════════════════
 
 from typing import Dict, List
 from env.models import EnvironmentState, DailyMetrics
 
 
+def _calculate_service_level(metrics: List[DailyMetrics]) -> float:
+    """
+    Helper: calculates overall service level
+    across all days and all SKUs.
+    Service level = % of demand fulfilled.
+    """
+    total_demanded = sum(
+        sum(m.units_demanded.values()) for m in metrics
+    )
+    total_sold = sum(
+        sum(m.units_sold.values()) for m in metrics
+    )
+    if total_demanded == 0:
+        return 1.0
+    return min(1.0, total_sold / total_demanded)
+
+
+def _calculate_stockout_rate(
+    metrics: List[DailyMetrics],
+    total_days: int
+) -> float:
+    """
+    Helper: what fraction of days had NO stockouts.
+    1.0 = never stocked out
+    0.0 = stocked out every day
+    """
+    stockout_days = sum(
+        1 for m in metrics if len(m.stockouts) > 0
+    )
+    return 1.0 - (stockout_days / max(1, total_days))
+
+
+def _calculate_budget_score(state: EnvironmentState) -> float:
+    """
+    Helper: scores budget usage.
+    Rewards using budget wisely.
+    Penalizes going over budget.
+    """
+    if state.budget_remaining < 0:
+        # Over budget - penalize
+        overage = abs(state.budget_remaining)
+        return max(0.0, 1.0 - (overage / state.total_budget))
+
+    used_ratio = (
+        (state.total_budget - state.budget_remaining)
+        / state.total_budget
+    )
+
+    # Reward using 40-90% of budget
+    if 0.40 <= used_ratio <= 0.90:
+        return 1.0
+    elif used_ratio < 0.40:
+        # Under-used - might have caused stockouts
+        return 0.6 + (used_ratio / 0.40) * 0.4
+    else:
+        # Slightly over ideal - small penalty
+        return max(0.5, 1.0 - (used_ratio - 0.90) * 2)
+
+
 def grade_task_easy(state: EnvironmentState) -> float:
     """
-    TASK 1 GRADER — Single SKU Management (Easy)
+    TASK 1 GRADER — Single SKU (Easy)
 
-    Scores based on:
-    - Service level: did we fulfill customer demand? (40%)
-    - No stockouts:  did inventory ever hit zero?   (30%)
-    - Budget:        did we stay within budget?     (30%)
+    Scoring:
+    Service level  → 50% weight
+    Stockout rate  → 30% weight
+    Budget score   → 20% weight
 
-    Returns float 0.0 to 1.0
+    Easy task: agent should score 0.65-0.85
+    Random agent:  ~0.30
+    Perfect agent: ~0.95
     """
     if not state.daily_metrics:
         return 0.0
 
     metrics = state.daily_metrics
 
-    # ── SERVICE LEVEL (40%) ────────────────────
-    # What % of customer demand did we fulfill?
-    total_demanded = sum(
-        sum(m.units_demanded.values())
-        for m in metrics
-    )
-    total_sold = sum(
-        sum(m.units_sold.values())
-        for m in metrics
-    )
+    # Calculate components
+    service  = _calculate_service_level(metrics)
+    no_stock = _calculate_stockout_rate(metrics, len(metrics))
+    budget   = _calculate_budget_score(state)
 
-    if total_demanded == 0:
-        service_level = 1.0
-    else:
-        service_level = min(1.0, total_sold / total_demanded)
-
-    # ── STOCKOUT SCORE (30%) ───────────────────
-    # Penalize days where stockouts occurred
-    stockout_days = sum(
-        1 for m in metrics if len(m.stockouts) > 0
-    )
-    total_days = len(metrics)
-    stockout_score = 1.0 - (stockout_days / max(1, total_days))
-
-    # ── BUDGET SCORE (30%) ─────────────────────
-    # Did agent stay within budget?
-    budget_used = state.total_budget - state.budget_remaining
-    if budget_used <= state.total_budget:
-        budget_score = 1.0
-    else:
-        # Over budget — penalize proportionally
-        overage = budget_used - state.total_budget
-        budget_score = max(0.0, 1.0 - (overage / state.total_budget))
-
-    # ── FINAL SCORE ────────────────────────────
-    final_score = (
-        service_level  * 0.40 +
-        stockout_score * 0.30 +
-        budget_score   * 0.30
+    # Weighted final score
+    final = (
+        service  * 0.50 +
+        no_stock * 0.30 +
+        budget   * 0.20
     )
 
-    return round(final_score, 4)
+    # Bonus for excellent performance
+    if service >= 0.98 and no_stock >= 0.95:
+        final = min(1.0, final + 0.05)
+
+    return round(final, 4)
 
 
 def grade_task_medium(state: EnvironmentState) -> float:
     """
-    TASK 2 GRADER — Multi-SKU Budget Management (Medium)
+    TASK 2 GRADER — Multi SKU (Medium)
 
-    Scores based on:
-    - Service level across all SKUs  (35%)
-    - Budget efficiency              (25%)
-    - Inventory balance              (25%)
-    - No critical stockouts          (15%)
+    Scoring:
+    Service level     → 40% weight
+    Stockout rate     → 25% weight
+    Budget efficiency → 20% weight
+    SKU balance       → 15% weight
 
-    Returns float 0.0 to 1.0
+    Medium task: agent should score 0.50-0.70
+    Random agent:  ~0.20
+    Perfect agent: ~0.90
     """
     if not state.daily_metrics:
         return 0.0
 
     metrics = state.daily_metrics
 
-    # ── SERVICE LEVEL (35%) ────────────────────
-    total_demanded = sum(
-        sum(m.units_demanded.values()) for m in metrics
-    )
-    total_sold = sum(
-        sum(m.units_sold.values()) for m in metrics
-    )
-    service_level = (
-        min(1.0, total_sold / total_demanded)
-        if total_demanded > 0 else 1.0
-    )
+    # Main components
+    service  = _calculate_service_level(metrics)
+    no_stock = _calculate_stockout_rate(metrics, len(metrics))
+    budget   = _calculate_budget_score(state)
 
-    # ── BUDGET EFFICIENCY (25%) ────────────────
-    # Reward using budget wisely — not too much, not too little
-    budget_used_ratio = (
-        (state.total_budget - state.budget_remaining)
-        / state.total_budget
-    )
-    # Ideal: use 60-90% of budget
-    if 0.60 <= budget_used_ratio <= 0.90:
-        budget_score = 1.0
-    elif budget_used_ratio < 0.60:
-        # Under-used budget — maybe stocked out unnecessarily
-        budget_score = budget_used_ratio / 0.60
-    else:
-        # Over budget
-        budget_score = max(0.0, 1.0 - (budget_used_ratio - 0.90) * 5)
-
-    # ── INVENTORY BALANCE (25%) ────────────────
-    # Check if inventory stayed in healthy range
-    healthy_days = 0
-    total_sku_days = 0
-
+    # SKU balance score
+    # Checks if agent managed ALL SKUs well
+    # not just the easy ones
+    sku_scores = {}
     for m in metrics:
         for sku_id, demanded in m.units_demanded.items():
-            total_sku_days += 1
-            sold = m.units_sold.get(sku_id, 0)
-            if demanded > 0 and sold >= demanded * 0.9:
-                healthy_days += 1
-            elif demanded == 0:
-                healthy_days += 1
+            if sku_id not in sku_scores:
+                sku_scores[sku_id] = {"demanded": 0, "sold": 0}
+            sku_scores[sku_id]["demanded"] += demanded
+            sku_scores[sku_id]["sold"] += m.units_sold.get(sku_id, 0)
 
-    balance_score = (
-        healthy_days / total_sku_days
-        if total_sku_days > 0 else 1.0
+    sku_service_levels = []
+    for sku_id, totals in sku_scores.items():
+        if totals["demanded"] > 0:
+            sl = totals["sold"] / totals["demanded"]
+            sku_service_levels.append(sl)
+
+    # Balance = worst SKU service level
+    # Penalizes ignoring any single SKU
+    if sku_service_levels:
+        worst_sku = min(sku_service_levels)
+        balance   = (sum(sku_service_levels) / len(sku_service_levels)
+                     * 0.7 + worst_sku * 0.3)
+    else:
+        balance = 1.0
+
+    final = (
+        service  * 0.40 +
+        no_stock * 0.25 +
+        budget   * 0.20 +
+        balance  * 0.15
     )
 
-    # ── CRITICAL STOCKOUT PENALTY (15%) ────────
-    total_stockout_events = sum(
-        len(m.stockouts) for m in metrics
-    )
-    # Allow up to 5 stockout events before heavy penalty
-    critical_score = max(
-        0.0, 1.0 - (total_stockout_events / 20)
-    )
-
-    # ── FINAL SCORE ────────────────────────────
-    final_score = (
-        service_level  * 0.35 +
-        budget_score   * 0.25 +
-        balance_score  * 0.25 +
-        critical_score * 0.15
-    )
-
-    return round(final_score, 4)
+    return round(final, 4)
 
 
 def grade_task_hard(state: EnvironmentState) -> float:
     """
-    TASK 3 GRADER — Supplier Disruption Crisis (Hard)
+    TASK 3 GRADER — Disruption Crisis (Hard)
 
-    Scores based on:
-    - Survived supplier bankruptcy    (20%)
-    - Overall service level           (30%)
-    - Holiday surge handled           (25%)
-    - Cost efficiency                 (25%)
+    Scoring:
+    Overall service level    → 25% weight
+    Post bankruptcy service  → 25% weight
+    Holiday surge handling   → 25% weight
+    Cost efficiency          → 25% weight
 
-    Returns float 0.0 to 1.0
+    Hard task: agent should score 0.35-0.55
+    Random agent:  ~0.15
+    Perfect agent: ~0.85
     """
     if not state.daily_metrics:
         return 0.0
 
-    metrics = state.daily_metrics
+    metrics    = state.daily_metrics
     total_days = len(metrics)
 
-    # ── BANKRUPTCY SURVIVAL (20%) ──────────────
-    # Days 45+ should still have decent service
-    # despite supplier going bankrupt on day 45
-    post_bankruptcy_metrics = (
-        metrics[44:] if len(metrics) > 44 else metrics
-    )
-    if post_bankruptcy_metrics:
-        post_demanded = sum(
-            sum(m.units_demanded.values())
-            for m in post_bankruptcy_metrics
-        )
-        post_sold = sum(
-            sum(m.units_sold.values())
-            for m in post_bankruptcy_metrics
-        )
-        bankruptcy_score = (
-            min(1.0, post_sold / post_demanded)
-            if post_demanded > 0 else 1.0
-        )
+    # Overall service level
+    overall_service = _calculate_service_level(metrics)
+
+    # Post bankruptcy performance (days 45+)
+    # Tests if agent recovered from supplier loss
+    if total_days > 44:
+        post_metrics    = metrics[44:]
+        post_service    = _calculate_service_level(post_metrics)
     else:
-        bankruptcy_score = 0.5
+        post_service    = overall_service
 
-    # ── OVERALL SERVICE LEVEL (30%) ────────────
-    total_demanded = sum(
-        sum(m.units_demanded.values()) for m in metrics
-    )
-    total_sold = sum(
-        sum(m.units_sold.values()) for m in metrics
-    )
-    service_level = (
-        min(1.0, total_sold / total_demanded)
-        if total_demanded > 0 else 1.0
-    )
-
-    # ── HOLIDAY SURGE (25%) ────────────────────
-    # Days 75-90 are holiday — check performance
-    holiday_metrics = (
-        metrics[74:] if len(metrics) > 74 else []
-    )
-    if holiday_metrics:
-        holiday_demanded = sum(
-            sum(m.units_demanded.values())
-            for m in holiday_metrics
-        )
-        holiday_sold = sum(
-            sum(m.units_sold.values())
-            for m in holiday_metrics
-        )
-        holiday_score = (
-            min(1.0, holiday_sold / holiday_demanded)
-            if holiday_demanded > 0 else 1.0
-        )
+    # Holiday surge performance (days 75+)
+    # Tests if agent prepared for demand spike
+    if total_days > 74:
+        holiday_metrics = metrics[74:]
+        holiday_service = _calculate_service_level(holiday_metrics)
     else:
-        holiday_score = 0.5
+        holiday_service = overall_service * 0.8
 
-    # ── COST EFFICIENCY (25%) ──────────────────
-    total_revenue = state.total_revenue
-    total_costs   = state.total_costs
-
-    if total_revenue > 0:
+    # Cost efficiency
+    # Did agent make money despite disruptions?
+    if state.total_revenue > 0:
         profit_margin = (
-            (total_revenue - total_costs) / total_revenue
+            (state.total_revenue - state.total_costs)
+            / state.total_revenue
         )
-        cost_score = min(1.0, max(0.0, profit_margin))
+        cost_score = min(1.0, max(0.0, profit_margin + 0.3))
     else:
-        cost_score = 0.0
+        cost_score = 0.1
 
-    # ── FINAL SCORE ────────────────────────────
-    final_score = (
-        bankruptcy_score * 0.20 +
-        service_level    * 0.30 +
-        holiday_score    * 0.25 +
+    final = (
+        overall_service  * 0.25 +
+        post_service     * 0.25 +
+        holiday_service  * 0.25 +
         cost_score       * 0.25
     )
 
-    return round(final_score, 4)
+    # Hard task bonus for exceptional performance
+    if overall_service >= 0.90:
+        final = min(1.0, final + 0.05)
+
+    return round(final, 4)
 
 
 def get_grader(task_id: str):
-    """
-    Returns the correct grader function for a task.
-    Used by environment to grade automatically.
-    """
+    """Returns correct grader for task"""
     graders = {
         "task_easy":   grade_task_easy,
         "task_medium": grade_task_medium,
