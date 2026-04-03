@@ -99,7 +99,7 @@ Daily rewards signal:
 ### Run Locally
 
 Clone the repository:
-git clone https://huggingface.co/spaces/YOUR_USERNAME/supplychain-env
+git clone https://huggingface.co/spaces/Oggyis1/supplychain-env
 
 Install dependencies:
 pip install -r requirements.txt
