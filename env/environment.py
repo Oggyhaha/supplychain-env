@@ -1,41 +1,7 @@
-# ## FILE 5 — `env/environment.py`
-
-# ### What Is It?
-# ```
-# THE HEART OF THE ENTIRE PROJECT.
-# This is the actual OpenEnv environment.
-
-# It connects ALL other files together:
-# demand_generator → how much customers buy
-# suppliers        → how we restock
-# graders          → how we score
-# models           → data shapes
-
-# Implements the 3 required OpenEnv methods:
-# reset() → start fresh episode
-# step()  → take one action, get reward
-# state() → see current environment state
-# ```
-
-# ### Why Is It Important?
-# ```
-# Without this file → nothing works
-# This is what judges test directly:
-#   env.reset()  → must return observation
-#   env.step()   → must return reward
-#   env.state()  → must return state
-
-# This is 20% of hackathon score alone
-# Open env/environment.py and paste:
-# python# env/environment.py
-# # ═══════════════════════════════════════════════
-# # CORE ENVIRONMENT — Heart of SupplyChain-Env
-# #
-# # Implements OpenEnv interface:
-# #   reset() → start fresh episode
-# #   step()  → take action, get reward
-# #   state() → get current state
-# # ═══════════════════════════════════════════════
+# env/environment.py
+# ═══════════════════════════════════════════════
+# CORE ENVIRONMENT
+# ═══════════════════════════════════════════════
 
 import yaml
 from typing import Optional, Dict, List
@@ -51,8 +17,6 @@ from env.graders import get_grader
 
 
 # ── TASK CONFIGURATIONS ────────────────────────
-# Defines what each task looks like
-
 TASK_CONFIGS = {
 
     "task_easy": {
@@ -92,9 +56,12 @@ TASK_CONFIGS = {
             SKU(
                 sku_id="LAPTOP-001",
                 name="Business Laptop",
-                unit_cost=800.0, selling_price=1200.0,
-                holding_cost=2.0, stockout_penalty=50.0,
-                reorder_point=20, max_capacity=300,
+                unit_cost=800.0,
+                selling_price=1200.0,
+                holding_cost=2.0,
+                stockout_penalty=50.0,
+                reorder_point=20,
+                max_capacity=300,
                 min_order_qty=5,
                 demand_pattern=DemandPattern.STABLE,
                 category="electronics",
@@ -102,9 +69,12 @@ TASK_CONFIGS = {
             SKU(
                 sku_id="TABLET-002",
                 name="Tablet Pro",
-                unit_cost=400.0, selling_price=650.0,
-                holding_cost=1.5, stockout_penalty=30.0,
-                reorder_point=15, max_capacity=400,
+                unit_cost=400.0,
+                selling_price=650.0,
+                holding_cost=1.5,
+                stockout_penalty=30.0,
+                reorder_point=15,
+                max_capacity=400,
                 min_order_qty=10,
                 demand_pattern=DemandPattern.TRENDING,
                 category="electronics",
@@ -112,9 +82,12 @@ TASK_CONFIGS = {
             SKU(
                 sku_id="CHAIR-005",
                 name="Ergonomic Chair",
-                unit_cost=200.0, selling_price=350.0,
-                holding_cost=3.0, stockout_penalty=20.0,
-                reorder_point=10, max_capacity=100,
+                unit_cost=200.0,
+                selling_price=350.0,
+                holding_cost=3.0,
+                stockout_penalty=20.0,
+                reorder_point=10,
+                max_capacity=100,
                 min_order_qty=5,
                 demand_pattern=DemandPattern.SEASONAL,
                 category="furniture",
@@ -122,9 +95,12 @@ TASK_CONFIGS = {
             SKU(
                 sku_id="KEYBOARD-009",
                 name="Mechanical Keyboard",
-                unit_cost=80.0, selling_price=140.0,
-                holding_cost=0.5, stockout_penalty=10.0,
-                reorder_point=25, max_capacity=500,
+                unit_cost=80.0,
+                selling_price=140.0,
+                holding_cost=0.5,
+                stockout_penalty=10.0,
+                reorder_point=25,
+                max_capacity=500,
                 min_order_qty=20,
                 demand_pattern=DemandPattern.RANDOM,
                 category="electronics",
@@ -152,9 +128,12 @@ TASK_CONFIGS = {
             SKU(
                 sku_id="LAPTOP-001",
                 name="Business Laptop",
-                unit_cost=800.0, selling_price=1200.0,
-                holding_cost=2.0, stockout_penalty=50.0,
-                reorder_point=20, max_capacity=300,
+                unit_cost=800.0,
+                selling_price=1200.0,
+                holding_cost=2.0,
+                stockout_penalty=50.0,
+                reorder_point=20,
+                max_capacity=300,
                 min_order_qty=5,
                 demand_pattern=DemandPattern.SEASONAL,
                 category="electronics",
@@ -162,9 +141,12 @@ TASK_CONFIGS = {
             SKU(
                 sku_id="TABLET-002",
                 name="Tablet Pro",
-                unit_cost=400.0, selling_price=650.0,
-                holding_cost=1.5, stockout_penalty=30.0,
-                reorder_point=15, max_capacity=400,
+                unit_cost=400.0,
+                selling_price=650.0,
+                holding_cost=1.5,
+                stockout_penalty=30.0,
+                reorder_point=15,
+                max_capacity=400,
                 min_order_qty=10,
                 demand_pattern=DemandPattern.SHOCK,
                 category="electronics",
@@ -172,9 +154,12 @@ TASK_CONFIGS = {
             SKU(
                 sku_id="CHAIR-005",
                 name="Ergonomic Chair",
-                unit_cost=200.0, selling_price=350.0,
-                holding_cost=3.0, stockout_penalty=20.0,
-                reorder_point=10, max_capacity=100,
+                unit_cost=200.0,
+                selling_price=350.0,
+                holding_cost=3.0,
+                stockout_penalty=20.0,
+                reorder_point=10,
+                max_capacity=100,
                 min_order_qty=5,
                 demand_pattern=DemandPattern.TRENDING,
                 category="furniture",
@@ -182,9 +167,12 @@ TASK_CONFIGS = {
             SKU(
                 sku_id="KEYBOARD-009",
                 name="Mechanical Keyboard",
-                unit_cost=80.0, selling_price=140.0,
-                holding_cost=0.5, stockout_penalty=10.0,
-                reorder_point=25, max_capacity=500,
+                unit_cost=80.0,
+                selling_price=140.0,
+                holding_cost=0.5,
+                stockout_penalty=10.0,
+                reorder_point=25,
+                max_capacity=500,
                 min_order_qty=20,
                 demand_pattern=DemandPattern.RANDOM,
                 category="electronics",
@@ -192,9 +180,12 @@ TASK_CONFIGS = {
             SKU(
                 sku_id="MONITOR-004",
                 name="4K Monitor",
-                unit_cost=350.0, selling_price=550.0,
-                holding_cost=2.5, stockout_penalty=40.0,
-                reorder_point=10, max_capacity=200,
+                unit_cost=350.0,
+                selling_price=550.0,
+                holding_cost=2.5,
+                stockout_penalty=40.0,
+                reorder_point=10,
+                max_capacity=200,
                 min_order_qty=5,
                 demand_pattern=DemandPattern.TRENDING,
                 category="electronics",
@@ -213,8 +204,16 @@ TASK_CONFIGS = {
             "Maintain service level above 90%."
         ),
         "events": [
-            {"day": 45, "type": "bankruptcy", "supplier_id": "SUP-001"},
-            {"day": 75, "type": "demand_surge", "multiplier": 2.5},
+            {
+                "day": 45,
+                "type": "bankruptcy",
+                "supplier_id": "SUP-001"
+            },
+            {
+                "day": 75,
+                "type": "demand_surge",
+                "multiplier": 2.5
+            },
         ],
     },
 }
@@ -223,18 +222,7 @@ TASK_CONFIGS = {
 class SupplyChainEnvironment:
     """
     MAIN ENVIRONMENT CLASS
-
-    This is what agents interact with.
     Follows OpenEnv standard interface.
-
-    Usage:
-        env = SupplyChainEnvironment("task_easy")
-        result = env.reset()
-        obs = result.observation
-
-        action = RestockAction(orders=[...])
-        result = env.step(action)
-        print(result.reward.total_score)
     """
 
     def __init__(self, task_id: str = "task_easy"):
@@ -248,36 +236,21 @@ class SupplyChainEnvironment:
         self._state: Optional[EnvironmentState] = None
 
     def reset(self) -> StepResult:
-        """
-        START A FRESH EPISODE.
-
-        Resets everything:
-        - Inventory back to starting levels
-        - Budget back to full
-        - Day counter back to 1
-        - All orders cleared
-        - All metrics cleared
-
-        Returns first observation so agent
-        knows what it's working with.
-        """
+        """Start fresh episode"""
         config = self.config
         seed   = config["seed"]
 
-        # Initialize demand generator
         self._demand_gen = DemandGenerator(
             skus=config["skus"],
             seed=seed
         )
 
-        # Initialize supplier manager
         self._supplier_mgr = SupplierManager(
             suppliers=get_default_suppliers(),
             skus=config["skus"],
             seed=seed
         )
 
-        # Build fresh environment state
         self._state = EnvironmentState(
             task_id=self.task_id,
             difficulty=config["difficulty"],
@@ -299,7 +272,6 @@ class SupplyChainEnvironment:
             seed=seed,
         )
 
-        # Return initial observation
         observation = self._build_observation()
         return StepResult(
             observation=observation,
@@ -321,30 +293,14 @@ class SupplyChainEnvironment:
         )
 
     def step(self, action: RestockAction) -> StepResult:
-        """
-        TAKE ONE ACTION — advances simulation by one day.
-
-        Flow each day:
-        1. Process agent's restock orders
-        2. Receive deliveries from suppliers
-        3. Generate customer demand
-        4. Sell to customers (up to inventory limit)
-        5. Calculate today's reward
-        6. Check if episode is done
-        7. Trigger events (bankruptcy, surge)
-        8. Return new observation + reward
-
-        action: RestockAction with list of orders to place
-        Returns: StepResult with new observation and reward
-        """
+        """Take one action — advances simulation by one day"""
         if self._state is None:
             raise RuntimeError("Call reset() before step()")
-
         if self._state.episode_done:
             raise RuntimeError("Episode done. Call reset().")
 
-        state = self._state
-        day   = state.current_day
+        state  = self._state
+        day    = state.current_day
         errors = []
 
         # ── STEP 1: PROCESS ORDERS ─────────────
@@ -364,7 +320,6 @@ class SupplyChainEnvironment:
             else:
                 errors.append(f"Order rejected: {msg}")
 
-        # Add new orders to pending
         state.pending_orders.extend(new_orders)
         state.order_history.extend(new_orders)
 
@@ -380,7 +335,6 @@ class SupplyChainEnvironment:
             if o.status == OrderStatus.PENDING
         ]
 
-        # Add delivered items to inventory
         for sku_id, qty in deliveries.items():
             if sku_id in state.inventory:
                 sku = next(
@@ -400,42 +354,35 @@ class SupplyChainEnvironment:
             total_days=state.total_days
         )
 
-        units_sold    = {}
-        units_demanded = {}
-        stockouts     = []
-        daily_revenue = 0.0
-        holding_costs = 0.0
+        units_sold      = {}
+        units_demanded  = {}
+        stockouts       = []
+        daily_revenue   = 0.0
+        holding_costs   = 0.0
         stockout_losses = 0.0
 
         for sku in state.skus:
-            sku_id      = sku.sku_id
-            demanded    = demand.get(sku_id, 0)
-            available   = state.inventory.get(sku_id, 0)
-            sold        = min(demanded, available)
-            not_sold    = demanded - sold
+            sku_id    = sku.sku_id
+            demanded  = demand.get(sku_id, 0)
+            available = state.inventory.get(sku_id, 0)
+            sold      = min(demanded, available)
+            not_sold  = demanded - sold
 
-            units_sold[sku_id]     = sold
+            units_sold[sku_id]    = sold
             units_demanded[sku_id] = demanded
 
-            # Update inventory
             state.inventory[sku_id] = available - sold
 
-            # Calculate revenue
-            daily_revenue += sold * sku.selling_price
+            daily_revenue   += sold * sku.selling_price
+            holding_costs   += state.inventory[sku_id] * sku.holding_cost
 
-            # Calculate holding cost
-            holding_costs += state.inventory[sku_id] * sku.holding_cost
-
-            # Calculate stockout loss
             if not_sold > 0:
                 stockouts.append(sku_id)
                 stockout_losses += not_sold * sku.stockout_penalty
 
-        # Update totals
         state.total_revenue += daily_revenue
         state.total_costs   += holding_costs + order_cost
 
-        # Record daily metrics
         daily_metric = DailyMetrics(
             units_sold=units_sold,
             units_demanded=units_demanded,
@@ -456,7 +403,6 @@ class SupplyChainEnvironment:
             order_cost=order_cost,
             errors=errors,
         )
-
         state.cumulative_score += reward.total_score
 
         # ── STEP 6: TRIGGER EVENTS ────────────
@@ -468,41 +414,36 @@ class SupplyChainEnvironment:
 
         if done:
             state.episode_done = True
-            # Final grading
-            grader = get_grader(self.task_id)
-            final_score = grader(state)
+            grader       = get_grader(self.task_id)
+            final_score  = grader(state)
             reward.total_score = final_score
-            reward.feedback = (
+            reward.feedback    = (
                 f"Episode complete! Final score: {final_score:.4f}"
             )
 
-        # ── STEP 8: RETURN RESULT ─────────────
         observation = self._build_observation()
         return StepResult(
             observation=observation,
             reward=reward,
             done=done,
             info={
-                "day": day,
-                "errors": errors,
+                "day":        day,
+                "errors":     errors,
                 "deliveries": deliveries,
-                "stockouts": stockouts,
+                "stockouts":  stockouts,
                 "order_cost": order_cost,
             },
         )
 
     def state(self) -> EnvironmentState:
-        """
-        Returns current internal state.
-        Required by OpenEnv spec.
-        """
+        """Returns current internal state"""
         if self._state is None:
             raise RuntimeError("Call reset() first")
         return self._state
 
     def _build_observation(self) -> WarehouseObservation:
         """Builds observation from current state"""
-        state = self._state
+        state    = self._state
         forecast = self._demand_gen.generate_forecast(
             day=state.current_day,
             total_days=state.total_days,
@@ -534,69 +475,100 @@ class SupplyChainEnvironment:
         order_cost: float,
         errors: List[str],
     ) -> SupplyChainReward:
-        """Calculates daily reward signal"""
+        """
+        IMPROVED REWARD FUNCTION
+        Meaningful signal every day.
+        Partial credit for partial success.
+        """
         state = self._state
 
-        # Service level today
-        total_d = sum(daily_metric.units_demanded.values())
-        total_s = sum(daily_metric.units_sold.values())
-        service = min(1.0, total_s / total_d) if total_d > 0 else 1.0
+        # ── SERVICE LEVEL ──────────────────────
+        total_demanded = sum(daily_metric.units_demanded.values())
+        total_sold     = sum(daily_metric.units_sold.values())
 
-        # Stockout penalty
-        stockout_pen = len(daily_metric.stockouts) * 0.15
+        if total_demanded == 0:
+            service_level = 1.0
+        else:
+            service_level = min(1.0, total_sold / total_demanded)
 
-        # Overstock penalty
-        overstock_pen = 0.0
-        for sku in state.skus:
-            inv = state.inventory.get(sku.sku_id, 0)
-            if inv > sku.max_capacity * 0.8:
-                overstock_pen += 0.05
-
-        # Budget penalty
-        budget_pen = 0.0
-        if state.budget_remaining < 0:
-            budget_pen = 0.3
-
-        # Inventory health
+        # ── INVENTORY HEALTH ───────────────────
         health_scores = []
+        overstock_pen = 0.0
+
         for sku in state.skus:
-            inv = state.inventory.get(sku.sku_id, 0)
-            if inv >= sku.reorder_point:
+            sku_id  = sku.sku_id
+            inv     = state.inventory.get(sku_id, 0)
+            max_cap = sku.max_capacity
+            reorder = sku.reorder_point
+
+            if inv == 0:
+                health_scores.append(0.0)
+            elif inv < reorder:
+                health_scores.append(0.4)
+            elif inv < reorder * 2:
+                health_scores.append(0.9)
+            elif inv < max_cap * 0.8:
                 health_scores.append(1.0)
             else:
-                health_scores.append(inv / max(1, sku.reorder_point))
+                health_scores.append(0.7)
+                overstock_pen += 0.03
+
         inv_health = (
             sum(health_scores) / len(health_scores)
             if health_scores else 1.0
         )
 
-        total = max(0.0, min(1.0,
-            service * 0.5
-            + inv_health * 0.3
-            - stockout_pen
-            - overstock_pen
-            - budget_pen
-        ))
+        # ── STOCKOUT PENALTY ───────────────────
+        stockout_count = len(daily_metric.stockouts)
+        total_skus     = max(1, len(state.skus))
+        stockout_pen   = (stockout_count / total_skus) * 0.3
 
-        feedback_parts = []
+        # ── BUDGET EFFICIENCY ──────────────────
+        budget_ratio = (
+            state.budget_remaining / state.total_budget
+            if state.total_budget > 0 else 1.0
+        )
+        budget_pen        = 0.2 if state.budget_remaining < 0 else 0.0
+        budget_efficiency = min(1.0, budget_ratio * 1.2)
+
+        # ── ORDER REWARD ───────────────────────
+        order_reward = 0.05 if order_cost > 0 else 0.0
+
+        # ── COMBINE ────────────────────────────
+        total = (
+            service_level     * 0.50 +
+            inv_health        * 0.25 +
+            budget_efficiency * 0.10 +
+            order_reward           -
+            stockout_pen           -
+            overstock_pen          -
+            budget_pen
+        )
+        total = max(0.0, min(1.0, total))
+
+        # ── FEEDBACK ───────────────────────────
+        parts = []
+        if service_level == 1.0:
+            parts.append("Perfect service level")
+        elif service_level >= 0.8:
+            parts.append(f"Good service: {service_level:.0%}")
+        else:
+            parts.append(f"Low service: {service_level:.0%}")
+
         if daily_metric.stockouts:
-            feedback_parts.append(
-                f"Stockouts: {daily_metric.stockouts}"
-            )
+            parts.append(f"Stockouts: {daily_metric.stockouts}")
         if order_cost > 0:
-            feedback_parts.append(f"Ordered: ${order_cost:.2f}")
+            parts.append(f"Spent: ${order_cost:,.0f}")
         if errors:
-            feedback_parts.append(f"Errors: {errors}")
-        if not feedback_parts:
-            feedback_parts.append("Good day - no issues")
+            parts.append(f"Errors: {len(errors)}")
+
+        feedback = " | ".join(parts) if parts else "Normal day"
 
         return SupplyChainReward(
             total_score=round(total, 4),
-            service_level=round(service, 4),
+            service_level=round(service_level, 4),
             inventory_health=round(inv_health, 4),
-            budget_efficiency=round(
-                1.0 - (order_cost / max(1, state.total_budget)), 4
-            ),
+            budget_efficiency=round(budget_efficiency, 4),
             cost_efficiency=round(
                 1.0 - overstock_pen - stockout_pen, 4
             ),
@@ -604,12 +576,12 @@ class SupplyChainEnvironment:
             overstock_penalty=round(overstock_pen, 4),
             budget_penalty=round(budget_pen, 4),
             stockouts_today=daily_metric.stockouts,
-            feedback=" | ".join(feedback_parts),
-            is_critical_failure=len(daily_metric.stockouts) >= 3,
+            feedback=feedback,
+            is_critical_failure=stockout_count >= len(state.skus),
         )
 
     def _process_events(self, day: int):
-        """Triggers scheduled events (bankruptcy, demand surge)"""
+        """Triggers scheduled events"""
         for event in self.config.get("events", []):
             if event["day"] == day:
                 if event["type"] == "bankruptcy":
