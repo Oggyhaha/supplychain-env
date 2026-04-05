@@ -14,8 +14,6 @@ __pycache__/
 *.pt
 *.pth
 
-# Test outputs
-baseline_scores.json
 
 # VS Code settings
 .vscode/

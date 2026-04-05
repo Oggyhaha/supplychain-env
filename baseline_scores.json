@@ -1,0 +1,12 @@
+{
+  "model": "llama-3.1-8b-instant",
+  "api_base_url": "https://api.groq.com/openai/v1",
+  "scores": {
+    "task_easy": 0.9588,
+    "task_medium": 0.9644,
+    "task_hard": 0.8893
+  },
+  "average_score": 0.9375,
+  "time_seconds": 455.1,
+  "time_minutes": 7.58
+}

@@ -1,45 +1,8 @@
-# ## FILE 3 — `env/suppliers.py`
-
-# ### What Is It?
-# ```
-# Simulates companies we buy products from.
-# Every real warehouse has multiple suppliers.
-
-# Example:
-# TechCorp    → sells laptops, tablets
-#              lead time: 3 days, reliable
-# QuickShip   → sells everything
-#              lead time: 1 day, expensive
-# BudgetParts → sells laptops cheap
-#              lead time: 7 days, unreliable
-# ```
-
-# ### Why Is It Important?
-# ```
-# Agent must learn:
-# ✅ Which supplier is cheapest?
-# ✅ Which supplier is fastest?
-# ✅ What if supplier goes bankrupt? (Task 3)
-# ✅ When to pay more for faster delivery?
-# ```
-
-# ### How It Works
-# ```
-# Agent orders 100 laptops from TechCorp
-# TechCorp says "ok, arriving in 3 days"
-# Day 3 comes → 95 laptops arrive (5% delay loss)
-# Agent updates inventory
-# Open env/suppliers.py and paste:
-# python# env/suppliers.py
-# # ═══════════════════════════════════════════════
-# # SUPPLIER SYSTEM
-# #
-# # Simulates real supplier behavior:
-# # - Processing orders
-# # - Random delays
-# # - Price changes
-# # - Bankruptcy events (Task 3)
-# # ═══════════════════════════════════════════════
+# env/suppliers.py
+# ═══════════════════════════════════════════════
+# SUPPLIER SYSTEM
+# Fixed version - proper SKU coverage for all tasks
+# ═══════════════════════════════════════════════
 
 import random
 from typing import Dict, List, Optional, Tuple
@@ -49,13 +12,11 @@ from env.models import (
 )
 
 
-# ── DEFAULT SUPPLIERS ──────────────────────────
-# Pre-built suppliers for our 3 tasks
-
 def get_default_suppliers() -> List[Supplier]:
     """
-    Returns the standard set of suppliers
-    used across all tasks.
+    Returns suppliers for all tasks.
+    Every SKU has at least 2 suppliers.
+    Min order values are realistic for budgets.
     """
     return [
         Supplier(
@@ -65,66 +26,68 @@ def get_default_suppliers() -> List[Supplier]:
             reliability=0.95,
             price_factor=1.0,
             skus_supplied=[
-                "LAPTOP-001", "TABLET-002",
-                "PHONE-003", "MONITOR-004"
+                "LAPTOP-001",
+                "TABLET-002",
+                "MONITOR-004",
+                "KEYBOARD-009",
+                "CHAIR-005",
             ],
             status=SupplierStatus.ACTIVE,
-            min_order_value=500.0,
+            min_order_value=100.0,
         ),
         Supplier(
             supplier_id="SUP-002",
             name="QuickShip Express",
             lead_time_days=1,
             reliability=0.90,
-            price_factor=1.25,   # 25% more expensive
+            price_factor=1.20,
             skus_supplied=[
-                "LAPTOP-001", "CHAIR-005",
-                "DESK-006", "LAMP-007"
+                "LAPTOP-001",
+                "TABLET-002",
+                "CHAIR-005",
+                "KEYBOARD-009",
+                "MONITOR-004",
             ],
             status=SupplierStatus.ACTIVE,
-            min_order_value=200.0,
+            min_order_value=100.0,
         ),
         Supplier(
             supplier_id="SUP-003",
             name="BudgetParts Co",
-            lead_time_days=7,
-            reliability=0.80,    # Less reliable
-            price_factor=0.85,   # 15% cheaper
+            lead_time_days=5,
+            reliability=0.82,
+            price_factor=0.88,
             skus_supplied=[
-                "LAPTOP-001", "TABLET-002",
-                "HEADPHONE-008", "KEYBOARD-009"
+                "LAPTOP-001",
+                "TABLET-002",
+                "KEYBOARD-009",
+                "MONITOR-004",
+                "CHAIR-005",
             ],
             status=SupplierStatus.ACTIVE,
-            min_order_value=1000.0,
+            min_order_value=100.0,
         ),
         Supplier(
             supplier_id="SUP-004",
             name="GlobalStock Ltd",
-            lead_time_days=5,
+            lead_time_days=4,
             reliability=0.88,
             price_factor=0.95,
             skus_supplied=[
-                "CHAIR-005", "DESK-006",
-                "MONITOR-004", "KEYBOARD-009",
-                "HEADPHONE-008", "LAMP-007"
+                "CHAIR-005",
+                "MONITOR-004",
+                "KEYBOARD-009",
+                "LAPTOP-001",
+                "TABLET-002",
             ],
             status=SupplierStatus.ACTIVE,
-            min_order_value=750.0,
+            min_order_value=100.0,
         ),
     ]
 
 
 class SupplierManager:
-    """
-    Manages all supplier interactions.
-
-    Handles:
-    - Validating orders (can supplier fulfill this?)
-    - Processing orders (calculating delivery day)
-    - Simulating delays (reliability factor)
-    - Updating order status daily
-    - Supplier events (bankruptcy, price changes)
-    """
+    """Manages all supplier interactions"""
 
     def __init__(
         self,
@@ -132,18 +95,14 @@ class SupplierManager:
         skus: List[SKU],
         seed: Optional[int] = None
     ):
-        # Store suppliers by ID for quick lookup
         self.suppliers: Dict[str, Supplier] = {
             s.supplier_id: s for s in suppliers
         }
-        # Store SKUs by ID for quick lookup
         self.skus: Dict[str, SKU] = {
             s.sku_id: s for s in skus
         }
-        self.random = random.Random(seed)
-
-        # Order counter for generating unique IDs
-        self._order_counter = 1
+        self.random          = random.Random(seed)
+        self._order_counter  = 1
 
     def place_order(
         self,
@@ -151,69 +110,46 @@ class SupplierManager:
         current_day: int,
         budget_remaining: float
     ) -> Tuple[Optional[PurchaseOrder], str]:
-        """
-        Places a purchase order with a supplier.
+        """Places a purchase order with validation"""
 
-        Returns:
-            (PurchaseOrder, "success") if valid
-            (None, "error message") if invalid
-
-        All the validation logic lives here.
-        """
-        # ── VALIDATION ─────────────────────────
-
-        # Check supplier exists
         supplier = self.suppliers.get(item.supplier_id)
         if not supplier:
             return None, f"Supplier {item.supplier_id} not found"
 
-        # Check supplier is active
         if supplier.status == SupplierStatus.BANKRUPT:
-            return None, f"{supplier.name} is bankrupt - find another supplier"
+            return None, f"{supplier.name} is bankrupt"
 
         if supplier.status == SupplierStatus.INACTIVE:
-            return None, f"{supplier.name} is currently inactive"
+            return None, f"{supplier.name} is inactive"
 
-        # Check supplier sells this SKU
         if item.sku_id not in supplier.skus_supplied:
-            return None, (
-                f"{supplier.name} does not supply {item.sku_id}"
-            )
+            return None, f"{supplier.name} does not supply {item.sku_id}"
 
-        # Check SKU exists
         sku = self.skus.get(item.sku_id)
         if not sku:
             return None, f"SKU {item.sku_id} not found"
 
-        # Check minimum order quantity
         if item.quantity < sku.min_order_qty:
             return None, (
-                f"Minimum order for {item.sku_id} is "
-                f"{sku.min_order_qty} units"
+                f"Min order for {item.sku_id} is {sku.min_order_qty}"
             )
 
-        # Calculate cost
-        unit_cost = sku.unit_cost * supplier.price_factor
+        unit_cost  = sku.unit_cost * supplier.price_factor
         total_cost = unit_cost * item.quantity
 
-        # Check minimum order value
         if total_cost < supplier.min_order_value:
             return None, (
-                f"Order value ${total_cost:.2f} below "
-                f"{supplier.name} minimum ${supplier.min_order_value:.2f}"
+                f"Order ${total_cost:.0f} below "
+                f"min ${supplier.min_order_value:.0f}"
             )
 
-        # Check budget
         if total_cost > budget_remaining:
             return None, (
-                f"Insufficient budget. Need ${total_cost:.2f}, "
-                f"have ${budget_remaining:.2f}"
+                f"Need ${total_cost:.0f}, "
+                f"have ${budget_remaining:.0f}"
             )
 
-        # ── CREATE ORDER ───────────────────────
-
-        # Calculate delivery day with possible delay
-        lead_time = self._calculate_lead_time(supplier)
+        lead_time    = self._calculate_lead_time(supplier)
         expected_day = current_day + lead_time
 
         order = PurchaseOrder(
@@ -232,50 +168,28 @@ class SupplierManager:
         return order, "success"
 
     def _calculate_lead_time(self, supplier: Supplier) -> int:
-        """
-        Calculates actual lead time with possible delays.
-
-        reliability=0.95 means:
-        95% of the time → normal lead time
-        5% of the time  → delayed by 1-3 extra days
-
-        Simulates real supplier unpredictability.
-        """
-        base_lead_time = supplier.lead_time_days
-
-        # Check if delivery is on time
+        """Lead time with random delays based on reliability"""
         if self.random.random() <= supplier.reliability:
-            # On time!
-            return base_lead_time
+            return supplier.lead_time_days
         else:
-            # Delayed! Add 1-3 extra days
-            delay = self.random.randint(1, 3)
-            return base_lead_time + delay
+            delay = self.random.randint(1, 2)
+            return supplier.lead_time_days + delay
 
     def process_daily_deliveries(
         self,
         pending_orders: List[PurchaseOrder],
         current_day: int
     ) -> Tuple[List[PurchaseOrder], Dict[str, int]]:
-        """
-        Checks which orders arrive today.
-        Called every day by environment.
-
-        Returns:
-            updated_orders: all orders with updated status
-            deliveries: {sku_id: quantity} that arrived today
-        """
-        deliveries: Dict[str, int] = {}
+        """Processes arriving orders for today"""
+        deliveries:    Dict[str, int] = {}
         updated_orders = []
 
         for order in pending_orders:
-            if (order.expected_day <= current_day and
-                    order.status == OrderStatus.PENDING):
-                # This order arrives today!
-                order.status = OrderStatus.DELIVERED
+            if (order.expected_day <= current_day
+                    and order.status == OrderStatus.PENDING):
+                order.status   = OrderStatus.DELIVERED
                 order.actual_day = current_day
 
-                # Add to deliveries
                 if order.sku_id in deliveries:
                     deliveries[order.sku_id] += order.quantity
                 else:
@@ -286,49 +200,29 @@ class SupplierManager:
         return updated_orders, deliveries
 
     def trigger_bankruptcy(self, supplier_id: str) -> bool:
-        """
-        Makes a supplier go bankrupt.
-        Used in Task 3 (hard difficulty).
-
-        All pending orders from this supplier
-        are automatically cancelled.
-        """
+        """Makes supplier go bankrupt"""
         if supplier_id in self.suppliers:
-            self.suppliers[supplier_id].status = (
-                SupplierStatus.BANKRUPT
-            )
+            self.suppliers[supplier_id].status = SupplierStatus.BANKRUPT
             return True
         return False
 
-    def trigger_delay(
-        self,
-        supplier_id: str,
-        extra_days: int
-    ) -> bool:
-        """
-        Adds extra delay to a supplier.
-        Used to simulate supply chain disruptions.
-        """
+    def trigger_delay(self, supplier_id: str, extra_days: int) -> bool:
+        """Adds delay to supplier"""
         if supplier_id in self.suppliers:
             self.suppliers[supplier_id].lead_time_days += extra_days
-            self.suppliers[supplier_id].status = (
-                SupplierStatus.DELAYED
-            )
+            self.suppliers[supplier_id].status = SupplierStatus.DELAYED
             return True
         return False
 
     def get_active_suppliers(self) -> List[Supplier]:
-        """Returns only suppliers that are currently active"""
+        """Returns active suppliers only"""
         return [
             s for s in self.suppliers.values()
             if s.status == SupplierStatus.ACTIVE
         ]
 
-    def get_suppliers_for_sku(
-        self,
-        sku_id: str
-    ) -> List[Supplier]:
-        """Returns all active suppliers that sell a specific SKU"""
+    def get_suppliers_for_sku(self, sku_id: str) -> List[Supplier]:
+        """Returns active suppliers for a specific SKU"""
         return [
             s for s in self.suppliers.values()
             if sku_id in s.skus_supplied
