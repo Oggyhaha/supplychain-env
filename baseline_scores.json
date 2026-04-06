@@ -3,10 +3,10 @@
   "api_base_url": "https://api.groq.com/openai/v1",
   "scores": {
     "task_easy": 0.9588,
-    "task_medium": 0.9644,
-    "task_hard": 0.8893
+    "task_medium": 0.8644,
+    "task_hard": 0.84
   },
-  "average_score": 0.9375,
-  "time_seconds": 455.1,
-  "time_minutes": 7.58
+  "average_score": 0.8877,
+  "time_seconds": 283.6,
+  "time_minutes": 4.73
 }
