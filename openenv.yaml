@@ -1,95 +1,85 @@
-# ## FILE 7 — `openenv.yaml`
-
-# ### What Is It?
-# ```
-# The ID card of our environment.
-# OpenEnv system reads this file to understand
-# what our environment is and how to validate it.
-
-# Like a passport — without it, environment
-# doesn't officially exist in OpenEnv system.
-# This is required for openenv validate to pass.
-# Open openenv.yaml and paste:
-# yaml# openenv.yaml
-# # ═══════════════════════════════════════════════
-# # OPENENV ENVIRONMENT METADATA
-# # Required for OpenEnv spec compliance
-# # ═══════════════════════════════════════════════
-
+# openenv.yaml
 name: supplychain-env
 version: 1.0.0
 description: >
-  A supply chain inventory management environment
-  where an AI agent manages warehouse inventory
-  across multiple SKUs, suppliers, and demand patterns.
-  Simulates real-world procurement decisions including
-  reorder timing, supplier selection, budget allocation,
-  and disruption handling.
+  A real-world supply chain inventory management
+  environment where an AI agent manages warehouse
+  inventory across multiple SKUs, suppliers, and
+  demand patterns. Simulates procurement decisions
+  including reorder timing, supplier selection,
+  budget allocation, and disruption handling.
 
-author: your-name-here
+author: Oggyis1
 license: MIT
+tags:
+  - openenv
+  - supply-chain
+  - inventory-management
+  - reinforcement-learning
 
-# Environment endpoints
 api:
-  reset: /reset/{task_id}
-  step:  /step/{task_id}
-  state: /state/{task_id}
+  base_url: "http://localhost:7860"
+  reset:  "/reset/{task_id}"
+  step:   "/step/{task_id}"
+  state:  "/state/{task_id}"
+  health: "/health"
 
-# The 3 required tasks
 tasks:
   - id: task_easy
-    name: Single SKU Management
+    name: "Single SKU Inventory Management"
     difficulty: easy
-    description: >
-      Manage inventory for one product (Laptop) over 30 days.
-      Stable demand pattern. Limited budget of $50,000.
     max_steps: 30
-    success_threshold: 0.7
+    success_threshold: 0.5
+    description: >
+      Manage inventory for one product over 30 days.
+      Stable demand. Budget of $50,000.
 
   - id: task_medium
-    name: Multi-SKU Budget Management
+    name: "Multi-SKU Budget Management"
     difficulty: medium
-    description: >
-      Manage 4 SKUs with different demand patterns over 60 days.
-      Budget constrained at $150,000. Must balance priorities.
     max_steps: 60
-    success_threshold: 0.6
+    success_threshold: 0.5
+    description: >
+      Manage 4 products over 60 days with $200,000
+      budget. Different demand patterns per SKU.
 
   - id: task_hard
-    name: Supplier Disruption Crisis
+    name: "Supplier Disruption Crisis"
     difficulty: hard
-    description: >
-      Manage 5 SKUs over 90 days. Supplier goes bankrupt on day 45.
-      Holiday demand surge on days 75-90. Budget of $300,000.
     max_steps: 90
     success_threshold: 0.5
+    description: >
+      Manage 5 products over 90 days. Supplier goes
+      bankrupt on day 45. Holiday surge on days 75-90.
 
-# Observation space description
 observation_space:
-  type: dict
+  type: object
+  description: "Daily warehouse state"
   fields:
-    current_day: integer
-    inventory: dict
-    pending_orders: list
-    budget_remaining: float
-    demand_forecast: dict
-    suppliers: list
-    skus: list
+    current_day: {type: integer}
+    inventory: {type: object}
+    pending_orders: {type: array}
+    budget_remaining: {type: number}
+    demand_forecast: {type: object}
+    suppliers: {type: array}
+    skus: {type: array}
 
-# Action space description
 action_space:
-  type: dict
+  type: object
+  description: "Daily restock decisions"
   fields:
     orders:
-      type: list
+      type: array
       items:
-        sku_id: string
-        supplier_id: string
-        quantity: integer
-    reasoning: string
+        sku_id: {type: string}
+        supplier_id: {type: string}
+        quantity: {type: integer}
+    reasoning: {type: string}
 
-# Reward range
 reward:
   min: 0.0
   max: 1.0
   type: float
+  description: >
+    Daily reward based on service level,
+    inventory health, and budget efficiency.

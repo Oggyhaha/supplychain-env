@@ -52,6 +52,56 @@ def root():
 def health():
     return {"status": "healthy"}
 
+@app.get("/metadata")
+def metadata():
+    return {
+        "name": "SupplyChain-Env",
+        "description": "OpenEnv supply chain management environment for reinforcement learning",
+        "version": "1.0.0",
+        "tasks": ["task_easy", "task_medium", "task_hard"]
+    }
+
+@app.get("/schema")
+def schema():
+    return {
+        "action": {
+            "type": "object",
+            "properties": {
+                "product_id": {"type": "string"},
+                "quantity": {"type": "integer"}
+            },
+            "required": ["product_id", "quantity"]
+        },
+        "observation": {
+            "type": "object",
+            "properties": {
+                "inventory": {"type": "object"},
+                "sales": {"type": "object"},
+                "day": {"type": "integer"},
+                "reward": {"type": "number"}
+            }
+        },
+        "state": {
+            "type": "object",
+            "properties": {
+                "current_inventory": {"type": "object"},
+                "total_sales": {"type": "integer"},
+                "episode_day": {"type": "integer"}
+            }
+        }
+    }
+
+@app.post("/mcp")
+def mcp(request: dict):
+    """MCP endpoint for JSON-RPC"""
+    return {
+        "jsonrpc": "2.0",
+        "id": request.get("id", 1),
+        "result": {
+            "name": "SupplyChain-Env",
+            "version": "1.0.0"
+        }
+    }
 
 @app.post("/reset/{task_id}")
 def reset(task_id: str):
@@ -88,5 +138,9 @@ def state(task_id: str):
     return environments[task_id].state().model_dump()
 
 
-if __name__ == "__main__":
+def main():
+    import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=7860)
+
+if __name__ == '__main__':
+    main()
