@@ -52,6 +52,9 @@ Dense reward signal every day:
 - Stockout penalties (proportional)
 - Overstock penalties (minor)
 
+## See The Visual Verification (The Swagger UI)
+https://oggyis1-supplychain-env.hf.space/docs
+
 ## Three Tasks
 
 | Task | Difficulty | Days | SKUs | Key Challenge |
