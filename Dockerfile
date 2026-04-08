@@ -44,4 +44,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s \
     || exit 1
 
 # Start the server
-CMD ["python", "server.py"]
+CMD ["python", "app.py"]
