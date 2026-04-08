@@ -44,4 +44,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s \
     || exit 1
 
 # Start the server
+ENV PYTHONPATH="${PYTHONPATH}:/app/server"
 CMD ["python", "server/app.py"]
