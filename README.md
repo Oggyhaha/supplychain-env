@@ -106,7 +106,7 @@ git clone https://huggingface.co/spaces/Oggyis1/supplychain-env
 cd supplychain-env
 pip install -r requirements.txt
 pip install torch --index-url https://download.pytorch.org/whl/cpu
-python server.py
+python server/app.py
 ```
 
 ### Run Baseline Inference
