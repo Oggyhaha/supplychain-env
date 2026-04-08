@@ -106,12 +106,23 @@ def mcp(request: dict):
 # Add this above your existing reset function
 @app.post("/reset")
 def reset_default():
-    """Added for the OpenEnv Validator script"""
-    task_id = "task_easy" # Default task
+    """Default reset for OpenEnv Validator"""
+    task_id = "task_easy"
     env = SupplyChainEnvironment(task_id)
     result = env.reset()
     environments[task_id] = env
     return result.model_dump()
+
+@app.post("/reset/{task_id}")
+def reset(task_id: str):
+    """Reset environment and start new episode"""
+    if task_id not in ["task_easy", "task_medium", "task_hard"]:
+        raise HTTPException(status_code=404, detail="Task not found")
+    env = SupplyChainEnvironment(task_id)
+    result = env.reset()
+    environments[task_id] = env
+    return result.model_dump()
+
 
 @app.post("/step/{task_id}")
 def step(task_id: str, action: RestockAction):
