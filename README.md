@@ -101,6 +101,13 @@ GET /state/{task_id}
 ### Health Check
 GET /health
 
+## GitHub Link
+https://github.com/Oggyhaha/supplychain-env
+
+## HuggingFace space link
+https://huggingface.co/spaces/Oggyis1/supplychain-env
+
+
 ## Quick Start
 
 ### Local Setup
