@@ -9,26 +9,18 @@ import json
 import time
 import sys
 import traceback
-from dotenv import load_dotenv
 from openai import OpenAI
 from env.environment import SupplyChainEnvironment
 from env.models import RestockAction, OrderItem
 
 # ── LOAD ENV ───────────────────────────────────
-load_dotenv()
-
-API_KEY      = os.getenv("OPENAI_API_KEY")
+# HF_TOKEN is the primary key (required by hackathon spec)
+# Falls back to OPENAI_API_KEY for local dev
+API_KEY      = os.getenv("HF_TOKEN") or os.getenv("OPENAI_API_KEY") or "dummy-key"
 API_BASE_URL = os.getenv("API_BASE_URL", "https://api.groq.com/openai/v1")
 MODEL_NAME   = os.getenv("MODEL_NAME", "llama-3.1-8b-instant")
-HF_TOKEN     = os.getenv("HF_TOKEN")
 
-if not API_KEY:
-    raise ValueError("OPENAI_API_KEY missing from .env")
-if not API_BASE_URL:
-    raise ValueError("API_BASE_URL missing from .env")
-if not MODEL_NAME:
-    raise ValueError("MODEL_NAME missing from .env")
-
+# ── CLIENT ─────────────────────────────────────
 client = OpenAI(api_key=API_KEY, base_url=API_BASE_URL)
 
 # ── SETTINGS ───────────────────────────────────
@@ -147,35 +139,36 @@ def budget_aware_restock(obs) -> RestockAction:
 
 
 def call_llm(obs) -> RestockAction:
-    """Calls LLM for strategic decisions"""
-    inv_lines = []
-    for sku in obs.skus:
-        qty      = obs.inventory.get(sku.sku_id, 0)
-        forecast = obs.demand_forecast.get(sku.sku_id, [10]*7)
-        avg_d    = sum(forecast)/len(forecast) if forecast else 10
-        days     = qty/avg_d if avg_d > 0 else 999
-        pending  = sum(
-            o.quantity for o in obs.pending_orders
-            if o.sku_id == sku.sku_id
-        )
-        coverage = days + pending/avg_d if avg_d > 0 else days
-        flag     = "ORDER NOW" if coverage < COVERAGE_THRESHOLD else "ok"
-        inv_lines.append(
-            f"  {sku.sku_id}: stock={qty} coverage={coverage:.1f}d "
-            f"demand={avg_d:.0f}/day cost={sku.unit_cost} {flag}"
-        )
-
-    sup_lines = []
-    for s in obs.suppliers:
-        if "active" in str(s.status).lower():
-            sup_lines.append(
-                f"  {s.supplier_id}: lead={s.lead_time_days}d "
-                f"price={s.price_factor}x skus={s.skus_supplied}"
+    """Calls LLM for strategic decisions — falls back to empty action on any error"""
+    try:
+        inv_lines = []
+        for sku in obs.skus:
+            qty      = obs.inventory.get(sku.sku_id, 0)
+            forecast = obs.demand_forecast.get(sku.sku_id, [10]*7)
+            avg_d    = sum(forecast)/len(forecast) if forecast else 10
+            days     = qty/avg_d if avg_d > 0 else 999
+            pending  = sum(
+                o.quantity for o in obs.pending_orders
+                if o.sku_id == sku.sku_id
             )
-        else:
-            sup_lines.append(f"  {s.supplier_id}: INACTIVE")
+            coverage = days + pending/avg_d if avg_d > 0 else days
+            flag     = "ORDER NOW" if coverage < COVERAGE_THRESHOLD else "ok"
+            inv_lines.append(
+                f"  {sku.sku_id}: stock={qty} coverage={coverage:.1f}d "
+                f"demand={avg_d:.0f}/day cost={sku.unit_cost} {flag}"
+            )
 
-    prompt = f"""Day {obs.current_day}/{obs.total_days}
+        sup_lines = []
+        for s in obs.suppliers:
+            if "active" in str(s.status).lower():
+                sup_lines.append(
+                    f"  {s.supplier_id}: lead={s.lead_time_days}d "
+                    f"price={s.price_factor}x skus={s.skus_supplied}"
+                )
+            else:
+                sup_lines.append(f"  {s.supplier_id}: INACTIVE")
+
+        prompt = f"""Day {obs.current_day}/{obs.total_days}
 Budget: ${obs.budget_remaining:,.0f}
 
 INVENTORY:
@@ -187,7 +180,6 @@ SUPPLIERS:
 Order SKUs with coverage below {COVERAGE_THRESHOLD} days.
 JSON only."""
 
-    try:
         response = client.chat.completions.create(
             model=MODEL_NAME,
             messages=[
@@ -214,7 +206,7 @@ JSON only."""
         data   = json.loads(text.strip())
         orders = []
         for o in data.get("orders", []):
-            if not all(k in o for k in ["sku_id","supplier_id","quantity"]):
+            if not all(k in o for k in ["sku_id", "supplier_id", "quantity"]):
                 continue
             qty = int(o["quantity"])
             if qty <= 0:
@@ -237,21 +229,12 @@ JSON only."""
             ))
         return RestockAction(
             orders=orders,
-            reasoning=str(data.get("reasoning","llm"))
+            reasoning=str(data.get("reasoning", "llm"))
         )
 
     except Exception as e:
-        msg = str(e)
-        if "decommissioned" in msg:
-            print(f"FATAL: Model decommissioned! Update MODEL_NAME in .env",
-                  file=sys.stderr)
-            raise SystemExit(1)
-        if "401" in msg:
-            print(f"FATAL: Invalid API key!", file=sys.stderr)
-            raise SystemExit(1)
-        if "429" in msg or "rate_limit" in msg:
-            time.sleep(10)
-        return RestockAction(orders=[], reasoning="llm_error")
+        print(f"LLM call failed (using rule-based fallback): {e}", file=sys.stderr)
+        return RestockAction(orders=[], reasoning="llm_error_fallback")
 
 
 def action_to_str(action: RestockAction) -> str:
@@ -268,17 +251,14 @@ def run_task(task_id: str) -> dict:
     Emits mandatory [START][STEP][END] stdout format.
     Returns result dict with score and rewards.
     """
-    env         = None
     rewards     = []
     steps_done  = 0
     final_score = 0.0
     success     = False
-    last_error  = None
 
     try:
         env    = SupplyChainEnvironment(task_id)
         result = env.reset()
-        obs    = result.observation
 
         # ── MANDATORY [START] LINE ──────────────
         print(
@@ -288,17 +268,17 @@ def run_task(task_id: str) -> dict:
             flush=True
         )
 
-        max_steps  = DEMO_STEPS[task_id]
-        llm_calls  = 0
+        max_steps = DEMO_STEPS[task_id]
 
         for step in range(1, max_steps + 1):
 
             if result.done:
                 break
 
-            obs  = result.observation
-            done = result.done
-            err  = None
+            obs    = result.observation
+            err    = None
+            reward = 0.0
+            done   = False
 
             try:
                 # Rule-based every day
@@ -308,9 +288,8 @@ def run_task(task_id: str) -> dict:
                 llm_action = RestockAction(orders=[], reasoning="skipped")
                 if step % LLM_EVERY == 1:
                     llm_action = call_llm(obs)
-                    llm_calls += 1
 
-                # Combine orders
+                # Combine orders — rule-based takes priority
                 final_dict  = {o.sku_id: o for o in rule_action.orders}
                 budget_used = 0.0
                 for o in rule_action.orders:
@@ -323,9 +302,7 @@ def run_task(task_id: str) -> dict:
                             s for s in obs.skus
                             if s.sku_id == o.sku_id
                         )
-                        budget_used += (
-                            sku.unit_cost * sup.price_factor * o.quantity
-                        )
+                        budget_used += sku.unit_cost * sup.price_factor * o.quantity
                     except Exception:
                         pass
 
@@ -359,24 +336,22 @@ def run_task(task_id: str) -> dict:
                 done        = result.done
                 final_score = reward
                 steps_done  = step
-
-                rewards.append(reward)
-                action_str = action_to_str(final_action)
+                action_str  = action_to_str(final_action)
 
             except Exception as e:
                 err        = str(e)
-                last_error = err
                 reward     = 0.0
                 done       = False
                 action_str = "error"
-                rewards.append(reward)
+                print(f"Step error: {e}", file=sys.stderr)
 
                 try:
-                    result = env.step(
-                        RestockAction(orders=[], reasoning="error")
-                    )
+                    result = env.step(RestockAction(orders=[], reasoning="error"))
+                    done   = result.done
                 except Exception:
                     done = True
+
+            rewards.append(reward)
 
             # ── MANDATORY [STEP] LINE ───────────
             print(
@@ -394,18 +369,15 @@ def run_task(task_id: str) -> dict:
 
         success = final_score >= 0.5
 
-    except SystemExit:
-        raise
-
     except Exception as e:
-        last_error  = str(e)
+        print(f"Task {task_id} failed: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
         final_score = 0.0
         success     = False
-        traceback.print_exc(file=sys.stderr)
 
     finally:
         # ── MANDATORY [END] LINE ────────────────
-        rewards_str = ",".join([f"{r:.2f}" for r in rewards])
+        rewards_str = ",".join([f"{r:.2f}" for r in rewards]) if rewards else "0.00"
         print(
             f"[END] "
             f"success={'true' if success else 'false'} "
@@ -416,12 +388,11 @@ def run_task(task_id: str) -> dict:
         )
 
     return {
-        "task_id":     task_id,
-        "score":       final_score,
-        "success":     success,
-        "steps":       steps_done,
-        "rewards":     rewards,
-        "llm_calls":   0,
+        "task_id": task_id,
+        "score":   final_score,
+        "success": success,
+        "steps":   steps_done,
+        "rewards": rewards,
     }
 
 
@@ -431,33 +402,16 @@ def main():
     Runs all 3 tasks with mandatory stdout format.
     Saves baseline_scores.json.
     """
-    # Validate model first
-    try:
-        r = client.chat.completions.create(
-            model=MODEL_NAME,
-            messages=[{"role": "user", "content": "say ok"}],
-            max_tokens=5,
-            temperature=0.0,
-        )
-        _ = r.choices[0].message.content
-    except Exception as e:
-        msg = str(e)
-        print(f"Model validation failed: {msg}", file=sys.stderr)
-        if "decommissioned" in msg:
-            print("Update MODEL_NAME in .env", file=sys.stderr)
-        sys.exit(1)
-
     results    = {}
     start_time = time.time()
 
     for task_id in ["task_easy", "task_medium", "task_hard"]:
         try:
-            result          = run_task(task_id)
+            result           = run_task(task_id)
             results[task_id] = result
-        except SystemExit:
-            raise
         except Exception as e:
-            print(f"Task {task_id} failed: {e}", file=sys.stderr)
+            print(f"Task {task_id} crashed: {e}", file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
             results[task_id] = {
                 "task_id": task_id,
                 "score":   0.0,
@@ -467,11 +421,9 @@ def main():
             }
 
     elapsed = time.time() - start_time
-    avg     = sum(
-        r["score"] for r in results.values()
-    ) / len(results) if results else 0
+    avg     = sum(r["score"] for r in results.values()) / len(results) if results else 0.0
 
-    # Print summary to stderr (not stdout to not break format)
+    # Summary to stderr only (keep stdout clean for parser)
     print(f"\n=== FINAL SCORES ===", file=sys.stderr)
     for task_id, r in results.items():
         print(
@@ -480,25 +432,27 @@ def main():
             file=sys.stderr
         )
     print(f"  Average: {avg:.4f}", file=sys.stderr)
-    print(f"  Time: {elapsed:.1f}s", file=sys.stderr)
+    print(f"  Time:    {elapsed:.1f}s", file=sys.stderr)
 
     # Save baseline scores
     output = {
-        "model":        MODEL_NAME,
-        "api_base_url": API_BASE_URL,
+        "model":         MODEL_NAME,
+        "api_base_url":  API_BASE_URL,
         "scores": {
             task_id: r["score"]
             for task_id, r in results.items()
         },
         "average_score": round(avg, 4),
         "time_seconds":  round(elapsed, 1),
-        "time_minutes":  round(elapsed/60, 2),
+        "time_minutes":  round(elapsed / 60, 2),
     }
 
-    with open("baseline_scores.json", "w") as f:
-        json.dump(output, f, indent=2)
-
-    print("Saved baseline_scores.json", file=sys.stderr)
+    try:
+        with open("baseline_scores.json", "w") as f:
+            json.dump(output, f, indent=2)
+        print("Saved baseline_scores.json", file=sys.stderr)
+    except Exception as e:
+        print(f"Could not save baseline_scores.json: {e}", file=sys.stderr)
 
 
 if __name__ == "__main__":
